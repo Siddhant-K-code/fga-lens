@@ -37,6 +37,17 @@ export type Decision = {
   visited: number;
 };
 
+export type ModelDiagnostic = {
+  line: number;
+  message: string;
+};
+
+export type ModelSummary = {
+  diagnostics: ModelDiagnostic[];
+  relationCount: number;
+  typeCount: number;
+};
+
 export const modelSource = [
   "model",
   "  schema 1.1",
@@ -66,6 +77,8 @@ export const modelSource = [
   "  relations",
   "    define member: [user, team#member]",
 ];
+
+export const defaultModel = modelSource.join("\n");
 
 export const tuples: Tuple[] = [
   { id: "t1", user: "user:erik", relation: "member", object: "organization:openfga" },
@@ -106,48 +119,118 @@ type Rule =
   | { kind: "computed"; relation: string; line: number; label: string }
   | { kind: "from"; relation: string; tupleset: string; line: number; label: string };
 
-const rules: Record<string, Record<string, Rule[]>> = {
-  organization: {
-    member: [{ kind: "computed", relation: "owner", line: 8, label: "Owners are also members" }],
-  },
-  repo: {
-    admin: [
-      {
-        kind: "from",
-        relation: "repo_admin",
-        tupleset: "owner",
-        line: 16,
-        label: "Repository admins inherit from the owner organization",
-      },
-    ],
-    maintainer: [
-      { kind: "computed", relation: "admin", line: 17, label: "Repository admins are maintainers" },
-    ],
-    writer: [
-      { kind: "computed", relation: "maintainer", line: 22, label: "Maintainers can write" },
-      {
-        kind: "from",
-        relation: "repo_writer",
-        tupleset: "owner",
-        line: 23,
-        label: "Writers can inherit from the owner organization",
-      },
-    ],
-    triager: [
-      { kind: "computed", relation: "writer", line: 21, label: "Repository writers can triage" },
-    ],
-    reader: [
-      { kind: "computed", relation: "triager", line: 19, label: "Repository triagers can read" },
-      {
-        kind: "from",
-        relation: "repo_reader",
-        tupleset: "owner",
-        line: 20,
-        label: "Readers can inherit from the owner organization",
-      },
-    ],
-  },
+type ParsedModel = ModelSummary & {
+  rules: Record<string, Record<string, Rule[]>>;
 };
+
+function relationLabel(relation: string) {
+  return relation.replaceAll("_", " ");
+}
+
+function ruleLabel(target: string, relation: string, tupleset?: string) {
+  if (tupleset) {
+    return `${relationLabel(target)} inherit through ${relationLabel(tupleset)}`;
+  }
+  return `${relationLabel(relation)} grants ${relationLabel(target)}`;
+}
+
+export function parseModel(modelText: string): ParsedModel {
+  const lines = modelText.split("\n");
+  const diagnostics: ModelDiagnostic[] = [];
+  const rules: Record<string, Record<string, Rule[]>> = {};
+  const types = new Set<string>();
+  let relationCount = 0;
+  let currentType = "";
+  let currentRelation = "";
+
+  const addExpression = (expression: string, line: number) => {
+    if (!currentType || !currentRelation) return;
+
+    const derivedExpression = expression.replace(/\[[^\]]*\]/g, " ");
+    const terms = derivedExpression
+      .split(/\s+or\s+|^\s*or\s+|\s+or\s*$/)
+      .map((term) => term.trim())
+      .filter(Boolean);
+
+    for (const term of terms) {
+      const fromMatch = term.match(/^([a-zA-Z_]\w*)\s+from\s+([a-zA-Z_]\w*)$/);
+      let rule: Rule | null = null;
+
+      if (fromMatch) {
+        rule = {
+          kind: "from",
+          relation: fromMatch[1],
+          tupleset: fromMatch[2],
+          line,
+          label: ruleLabel(currentRelation, fromMatch[1], fromMatch[2]),
+        };
+      } else if (/^[a-zA-Z_]\w*$/.test(term) && term !== currentRelation) {
+        rule = {
+          kind: "computed",
+          relation: term,
+          line,
+          label: ruleLabel(currentRelation, term),
+        };
+      } else if (term !== currentRelation) {
+        diagnostics.push({ line, message: `Could not parse “${term}”.` });
+      }
+
+      if (rule) {
+        rules[currentType] ??= {};
+        rules[currentType][currentRelation] ??= [];
+        rules[currentType][currentRelation].push(rule);
+      }
+    }
+  };
+
+  lines.forEach((sourceLine, index) => {
+    const line = index + 1;
+    const trimmed = sourceLine.trim();
+    const typeMatch = trimmed.match(/^type\s+([a-zA-Z_]\w*)$/);
+    const defineMatch = trimmed.match(/^define\s+([a-zA-Z_]\w*)\s*:\s*(.*)$/);
+
+    if (typeMatch) {
+      currentType = typeMatch[1];
+      currentRelation = "";
+      types.add(currentType);
+      rules[currentType] ??= {};
+      return;
+    }
+
+    if (trimmed.startsWith("define ") && !defineMatch) {
+      diagnostics.push({ line, message: "Expected `define relation: expression`." });
+      currentRelation = "";
+      return;
+    }
+
+    if (defineMatch) {
+      if (!currentType) {
+        diagnostics.push({ line, message: "Relation is outside a type block." });
+        return;
+      }
+      currentRelation = defineMatch[1];
+      relationCount += 1;
+      rules[currentType][currentRelation] ??= [];
+      addExpression(defineMatch[2], line);
+      return;
+    }
+
+    if (currentRelation && trimmed && trimmed !== "relations") {
+      addExpression(trimmed, line);
+    }
+  });
+
+  const openBrackets = (modelText.match(/\[/g) ?? []).length;
+  const closeBrackets = (modelText.match(/\]/g) ?? []).length;
+  if (openBrackets !== closeBrackets) {
+    diagnostics.push({ line: 1, message: "Unbalanced relationship type brackets." });
+  }
+  if (types.size === 0) {
+    diagnostics.push({ line: 1, message: "Add at least one type definition." });
+  }
+
+  return { diagnostics, relationCount, rules, typeCount: types.size };
+}
 
 type ResolveResult = {
   ok: boolean;
@@ -183,7 +266,7 @@ function tupleEvidence(tuple: Tuple, nested = false): Evidence {
   };
 }
 
-function ruleEvidence(rule: Rule, object: string): Evidence {
+function ruleEvidence(rule: Rule, object: string, modelLines: string[]): Evidence {
   return {
     id: `rule-${object}-${rule.line}-${rule.relation}`,
     kind: "rule",
@@ -193,13 +276,15 @@ function ruleEvidence(rule: Rule, object: string): Evidence {
         ? `The model follows ${rule.tupleset} to another object, then checks its ${rule.relation} relation.`
         : `The model includes the computed ${rule.relation} relation in this permission.`,
     line: rule.line,
-    expression: modelSource[rule.line - 1].trim(),
+    expression: modelLines[rule.line - 1]?.trim() ?? "",
   };
 }
 
-export function evaluate(query: Query, disabled: Set<string>): Decision {
+export function evaluate(query: Query, disabled: Set<string>, modelText = defaultModel): Decision {
   let visited = 0;
   const activeTuples = tuples.filter((tuple) => !disabled.has(tuple.id));
+  const modelLines = modelText.split("\n");
+  const { rules } = parseModel(modelText);
 
   const resolve = (
     user: string,
@@ -236,7 +321,7 @@ export function evaluate(query: Query, disabled: Set<string>): Decision {
       if (rule.kind === "computed") {
         const computed = resolve(user, rule.relation, object, nextStack);
         if (computed.ok) {
-          return { ok: true, path: [...computed.path, ruleEvidence(rule, object)] };
+          return { ok: true, path: [...computed.path, ruleEvidence(rule, object, modelLines)] };
         }
       } else {
         const relatedObjects = activeTuples.filter(
@@ -251,7 +336,7 @@ export function evaluate(query: Query, disabled: Set<string>): Decision {
               path: [
                 ...inherited.path,
                 tupleEvidence(related),
-                ruleEvidence(rule, object),
+                ruleEvidence(rule, object, modelLines),
               ],
             };
           }

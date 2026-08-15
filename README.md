@@ -1,6 +1,6 @@
 # FGA Lens
 
-A query-first visual debugger for relationship-based authorization. FGA Lens explains why an OpenFGA-style check passes or fails, links every proof step back to its tuple or model rule, and lets you disable tuples to simulate policy changes.
+A query-first visual debugger for relationship-based authorization. FGA Lens explains why an OpenFGA-style check passes or fails, links every proof step back to its tuple or model rule, and lets you edit the model or disable tuples to simulate policy changes.
 
 ## Run locally
 
@@ -17,6 +17,7 @@ Open [http://localhost:3000](http://localhost:3000).
 - A semantic proof for successful authorization checks
 - Failed-path explanations for denied checks
 - Synchronized tuple, model, proof, and evidence views
+- A syntax-highlighted live model editor that reevaluates proofs as you type
 - Live tuple toggles that immediately reevaluate the decision
 - Queries for repository `admin`, `maintainer`, `writer`, `triager`, and `reader`
 

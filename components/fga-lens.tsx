@@ -22,15 +22,18 @@ import {
   XCircle,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import type { KeyboardEvent } from "react";
 
 import {
+  defaultModel,
   displayName,
   evaluate,
-  modelSource,
+  parseModel,
   relations,
   tuples,
   users,
   type Evidence,
+  type ModelSummary,
   type Query,
   type Relation,
 } from "@/lib/fga-demo";
@@ -42,6 +45,128 @@ const initialQuery: Query = {
 };
 
 type SourceMode = "model" | "tuples";
+
+function highlightModelLine(line: string) {
+  return line
+    .split(/(\b(?:model|schema|type|relations|define|or|from)\b|[\[\],:#])/g)
+    .map((token, index) => {
+      const keyword = /^(model|schema|type|relations|define|or|from)$/.test(token);
+      const punctuation = /^[\[\],:#]$/.test(token);
+      return (
+        <span
+          className={keyword ? "syntax-keyword" : punctuation ? "syntax-punctuation" : undefined}
+          key={`${token}-${index}`}
+        >
+          {token}
+        </span>
+      );
+    });
+}
+
+function LiveModelEditor({
+  modelText,
+  setModelText,
+  summary,
+  selected,
+  selectEvidence,
+}: {
+  modelText: string;
+  setModelText: (model: string) => void;
+  summary: ModelSummary;
+  selected: Evidence | null;
+  selectEvidence: (evidence: Evidence) => void;
+}) {
+  const [scroll, setScroll] = useState({ left: 0, top: 0 });
+  const lines = modelText.split("\n");
+  const isChanged = modelText !== defaultModel;
+  const diagnosticLines = new Set(summary.diagnostics.map((diagnostic) => diagnostic.line));
+
+  const selectCurrentLine = (textarea: HTMLTextAreaElement) => {
+    const line = modelText.slice(0, textarea.selectionStart).split("\n").length;
+    const expression = lines[line - 1]?.trim();
+    if (!expression) return;
+    selectEvidence({
+      id: `source-line-${line}`,
+      kind: "rule",
+      title: "Authorization model rule",
+      explanation: "This line defines how a relationship can be derived.",
+      line,
+      expression,
+    });
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== "Tab") return;
+    event.preventDefault();
+    const textarea = event.currentTarget;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const nextModel = `${modelText.slice(0, start)}  ${modelText.slice(end)}`;
+    setModelText(nextModel);
+    window.requestAnimationFrame(() => textarea.setSelectionRange(start + 2, start + 2));
+  };
+
+  return (
+    <div className="live-editor">
+      <div className="code-toolbar">
+        <div className="editor-file">
+          <span className="window-dots" aria-hidden="true"><i /><i /><i /></span>
+          <span>model.fga</span>
+        </div>
+        <div className="editor-actions">
+          <span className={`live-state ${summary.diagnostics.length ? "invalid" : ""}`}>
+            <i /> {summary.diagnostics.length ? `${summary.diagnostics.length} issue` : "Live"}
+          </span>
+          {isChanged && (
+            <button onClick={() => setModelText(defaultModel)} title="Reset model">
+              <RotateCcw size={11} /> Reset
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="editor-surface">
+        <pre
+          className="editor-highlight"
+          aria-hidden="true"
+          style={{ transform: `translate(${-scroll.left}px, ${-scroll.top}px)` }}
+        >
+          {lines.map((line, index) => {
+            const lineNumber = index + 1;
+            const highlighted = selected?.kind === "rule" && selected.line === lineNumber;
+            return (
+              <span
+                className={`editor-row ${highlighted ? "highlighted" : ""} ${diagnosticLines.has(lineNumber) ? "diagnostic" : ""}`}
+                key={`${lineNumber}-${line}`}
+              >
+                <span className="editor-line-number">{lineNumber}</span>
+                <code>{highlightModelLine(line || " ")}</code>
+              </span>
+            );
+          })}
+        </pre>
+        <textarea
+          aria-label="Live OpenFGA authorization model"
+          autoCapitalize="off"
+          autoCorrect="off"
+          onChange={(event) => setModelText(event.target.value)}
+          onClick={(event) => selectCurrentLine(event.currentTarget)}
+          onKeyDown={handleKeyDown}
+          onKeyUp={(event) => selectCurrentLine(event.currentTarget)}
+          onScroll={(event) =>
+            setScroll({ left: event.currentTarget.scrollLeft, top: event.currentTarget.scrollTop })
+          }
+          spellCheck={false}
+          value={modelText}
+          wrap="off"
+        />
+      </div>
+      <div className="editor-footer">
+        <span>{summary.typeCount} types · {summary.relationCount} relations</span>
+        <span>{summary.diagnostics[0]?.message ?? "Re-evaluates as you type"}</span>
+      </div>
+    </div>
+  );
+}
 
 function shorten(value: string) {
   return value.replace("organization:", "org:").replace("repo:openfga/", "repo:");
@@ -67,6 +192,9 @@ function SourcePanel({
   resetTuples,
   selected,
   selectEvidence,
+  modelText,
+  setModelText,
+  modelSummary,
 }: {
   mode: SourceMode;
   setMode: (mode: SourceMode) => void;
@@ -75,6 +203,9 @@ function SourcePanel({
   resetTuples: () => void;
   selected: Evidence | null;
   selectEvidence: (evidence: Evidence) => void;
+  modelText: string;
+  setModelText: (model: string) => void;
+  modelSummary: ModelSummary;
 }) {
   const activeCount = tuples.length - disabled.size;
 
@@ -111,37 +242,13 @@ function SourcePanel({
 
       {mode === "model" ? (
         <div className="model-view" role="tabpanel">
-          <div className="code-toolbar">
-            <span>model.fga</span>
-            <span>schema 1.1</span>
-          </div>
-          <div className="code-window" aria-label="OpenFGA authorization model">
-            {modelSource.map((line, index) => {
-              const lineNumber = index + 1;
-              const highlighted = selected?.kind === "rule" && selected.line === lineNumber;
-              return (
-                <button
-                  className={`code-line ${highlighted ? "highlighted" : ""}`}
-                  key={`${lineNumber}-${line}`}
-                  onClick={() => {
-                    if (!line.trim()) return;
-                    selectEvidence({
-                      id: `source-line-${lineNumber}`,
-                      kind: "rule",
-                      title: "Authorization model rule",
-                      explanation: "This line defines how the relation can be derived.",
-                      line: lineNumber,
-                      expression: line.trim(),
-                    });
-                  }}
-                >
-                  <span className="line-number">{lineNumber}</span>
-                  <code>{line || " "}</code>
-                  {highlighted && <span className="line-marker" />}
-                </button>
-              );
-            })}
-          </div>
+          <LiveModelEditor
+            modelText={modelText}
+            setModelText={setModelText}
+            summary={modelSummary}
+            selected={selected}
+            selectEvidence={selectEvidence}
+          />
         </div>
       ) : (
         <div className="tuple-view" role="tabpanel">
@@ -315,15 +422,18 @@ function ProofStep({
 function DecisionCanvas({
   query,
   disabled,
+  modelText,
   selected,
   selectEvidence,
 }: {
   query: Query;
   disabled: Set<string>;
+  modelText: string;
   selected: Evidence | null;
   selectEvidence: (evidence: Evidence) => void;
 }) {
-  const decision = useMemo(() => evaluate(query, disabled), [query, disabled]);
+  const decision = useMemo(() => evaluate(query, disabled, modelText), [query, disabled, modelText]);
+  const modelLines = modelText.split("\n");
   const tupleCount = decision.path.filter((item) => item.kind === "tuple").length;
   const ruleCount = decision.path.length - tupleCount;
 
@@ -355,7 +465,7 @@ function DecisionCanvas({
         <span>
           {decision.allowed
             ? `${tupleCount} ${tupleCount === 1 ? "tuple" : "tuples"} · ${ruleCount} ${ruleCount === 1 ? "rule" : "rules"}`
-            : `${decision.attempts.length} paths exhausted`}
+            : `${decision.attempts.length} ${decision.attempts.length === 1 ? "path" : "paths"} exhausted`}
         </span>
         <span className="semantic-label">
           <ShieldCheck size={13} /> semantic proof
@@ -433,7 +543,7 @@ function DecisionCanvas({
                       title: attempt.title,
                       explanation: attempt.detail,
                       line: attempt.line,
-                      expression: modelSource[attempt.line - 1].trim(),
+                      expression: modelLines[attempt.line - 1]?.trim() ?? "",
                     });
                   }}
                 >
@@ -471,12 +581,14 @@ function EvidenceInspector({
   selected,
   query,
   disabled,
+  modelText,
 }: {
   selected: Evidence | null;
   query: Query;
   disabled: Set<string>;
+  modelText: string;
 }) {
-  const decision = useMemo(() => evaluate(query, disabled), [query, disabled]);
+  const decision = useMemo(() => evaluate(query, disabled, modelText), [query, disabled, modelText]);
   const [copied, setCopied] = useState(false);
 
   const copyExpression = async () => {
@@ -576,8 +688,10 @@ export function FgaLens() {
   const [draft, setDraft] = useState<Query>(initialQuery);
   const [query, setQuery] = useState<Query>(initialQuery);
   const [disabled, setDisabled] = useState<Set<string>>(new Set());
-  const [sourceMode, setSourceMode] = useState<SourceMode>("tuples");
+  const [sourceMode, setSourceMode] = useState<SourceMode>("model");
   const [selected, setSelected] = useState<Evidence | null>(null);
+  const [modelText, setModelText] = useState(defaultModel);
+  const modelSummary = useMemo(() => parseModel(modelText), [modelText]);
 
   const selectEvidence = (evidence: Evidence) => {
     setSelected(evidence);
@@ -639,14 +753,18 @@ export function FgaLens() {
           resetTuples={() => setDisabled(new Set())}
           selected={selected}
           selectEvidence={selectEvidence}
+          modelText={modelText}
+          setModelText={setModelText}
+          modelSummary={modelSummary}
         />
         <DecisionCanvas
           query={query}
           disabled={disabled}
+          modelText={modelText}
           selected={selected}
           selectEvidence={selectEvidence}
         />
-        <EvidenceInspector selected={selected} query={query} disabled={disabled} />
+        <EvidenceInspector selected={selected} query={query} disabled={disabled} modelText={modelText} />
       </div>
     </div>
   );
