@@ -14,7 +14,7 @@ Open [http://localhost:3000](http://localhost:3000).
 ## What the prototype includes
 
 - The OpenFGA GitHub sample model and relationship tuples
-- A semantic proof for successful authorization checks
+- A horizontal relationship graph for successful authorization checks
 - Failed-path explanations for denied checks
 - Synchronized tuple, model, proof, and evidence views
 - A syntax-highlighted live model editor that reevaluates proofs as you type

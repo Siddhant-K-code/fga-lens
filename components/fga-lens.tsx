@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  ArrowDown,
+  ArrowRight,
   Braces,
   Check,
   CheckCircle2,
@@ -15,7 +15,6 @@ import {
   Link2,
   Play,
   RotateCcw,
-  ScanSearch,
   ShieldCheck,
   SlidersHorizontal,
   X,
@@ -398,7 +397,7 @@ function ProofStep({
     <>
       <div className="proof-connector">
         <span />
-        <ArrowDown size={13} />
+        <ArrowRight size={13} />
       </div>
       <button className={`proof-step ${selected ? "selected" : ""}`} onClick={onSelect}>
         <span className={`step-icon ${evidence.kind}`}>
@@ -504,17 +503,16 @@ function DecisionCanvas({
 
               <div className="proof-connector final">
                 <span />
-                <ArrowDown size={13} />
+                <ArrowRight size={13} />
               </div>
               <div className="entity-node resource-node">
                 <span className="resource-icon">
                   <FolderGit2 size={18} />
                 </span>
                 <span>
-                  <small>Resulting relationship</small>
-                  <strong>
-                    {query.relation} on {query.object}
-                  </strong>
+                  <small>Result</small>
+                  <strong>{query.relation}</strong>
+                  <code>{query.object}</code>
                 </span>
                 <CheckCircle2 size={18} className="resource-check" />
               </div>
@@ -582,11 +580,13 @@ function EvidenceInspector({
   query,
   disabled,
   modelText,
+  onClose,
 }: {
   selected: Evidence | null;
   query: Query;
   disabled: Set<string>;
   modelText: string;
+  onClose: () => void;
 }) {
   const decision = useMemo(() => evaluate(query, disabled, modelText), [query, disabled, modelText]);
   const [copied, setCopied] = useState(false);
@@ -605,7 +605,9 @@ function EvidenceInspector({
           <span className="eyebrow">Inspector</span>
           <h2>Evidence details</h2>
         </div>
-        <ScanSearch size={17} />
+        <button className="inspector-close" onClick={onClose} aria-label="Close inspector">
+          <X size={15} />
+        </button>
       </div>
 
       {selected ? (
@@ -717,26 +719,21 @@ export function FgaLens() {
       <header className="app-header">
         <div className="brand-lockup">
           <LogoMark />
-          <div>
-            <strong>FGA Lens</strong>
-            <span>Authorization decisions, explained</span>
-          </div>
+          <strong>FGA Lens</strong>
         </div>
-        <div className="header-center">
-          <span className="status-pill"><span /> Interactive prototype</span>
+        <div className="document-path" aria-label="Current model">
+          <span>openfga</span><b>/</b><span>github</span><b>/</b><strong>model.fga</strong>
         </div>
         <div className="header-actions">
+          <span className="header-runtime"><i /> Local engine</span>
           <a
             className="github-link"
             href="https://github.com/openfga/sample-stores/tree/main/stores/github"
             target="_blank"
             rel="noreferrer"
           >
-            <FolderGit2 size={15} /> GitHub sample
+            <FolderGit2 size={14} /> Sample repo
           </a>
-          <button className="share-button" onClick={() => navigator.clipboard.writeText(window.location.href)}>
-            <Link2 size={14} /> Share
-          </button>
         </div>
       </header>
 
@@ -764,7 +761,15 @@ export function FgaLens() {
           selected={selected}
           selectEvidence={selectEvidence}
         />
-        <EvidenceInspector selected={selected} query={query} disabled={disabled} modelText={modelText} />
+        {selected && (
+          <EvidenceInspector
+            selected={selected}
+            query={query}
+            disabled={disabled}
+            modelText={modelText}
+            onClose={() => setSelected(null)}
+          />
+        )}
       </div>
     </div>
   );
