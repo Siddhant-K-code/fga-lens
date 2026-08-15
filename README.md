@@ -1,6 +1,6 @@
 # FGA Lens
 
-A query-first visual debugger for relationship-based authorization. FGA Lens explains why an OpenFGA-style check passes or fails, links every proof step back to its tuple or model rule, and lets you edit the model or disable tuples to simulate policy changes.
+A live visualizer for OpenFGA authorization models. Paste or write schema 1.1 DSL and FGA Lens turns types, relations, usersets, wildcards, computed permissions, and `X from Y` inheritance into an interactive graph.
 
 ## Run locally
 
@@ -11,17 +11,16 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## What the prototype includes
+## What it includes
 
-- The OpenFGA GitHub sample model and relationship tuples
-- A horizontal relationship graph for successful authorization checks
-- Failed-path explanations for denied checks
-- Synchronized tuple, model, proof, and evidence views
-- A syntax-highlighted live model editor that reevaluates proofs as you type
-- Live tuple toggles that immediately reevaluate the decision
-- Queries for repository `admin`, `maintainer`, `writer`, `triager`, and `reader`
+- OpenFGA's official ANTLR-backed DSL parser and semantic validator
+- A syntax-highlighted model editor that rebuilds the graph as you type
+- Type cards with relation and permission connection points
+- Distinct edges for direct subjects, computed relations, and inherited relations
+- Support for usersets such as `group#member`, wildcards such as `user:*`, conditions, unions, intersections, differences, and tuple-to-userset rules
+- Pan, zoom, fit-to-view, relation inspection, source-line linking, and useful malformed-model states
 
-The resolver is intentionally local and scoped to the included sample model. It demonstrates the interaction and explanation model; it is not an execution trace from a production OpenFGA server.
+Parsing and validation run locally in the browser. The graph represents the authorization model, not relationship tuples or the result of a runtime authorization check.
 
 ## Verification
 
