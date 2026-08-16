@@ -17,6 +17,7 @@ export type SubjectReference = {
 };
 
 export type GraphDependency = {
+  expressionPath: Array<"and" | "but not" | "or">;
   id: string;
   kind: "computed" | "direct" | "inherited" | "negative";
   label: string;
@@ -26,6 +27,14 @@ export type GraphDependency = {
   targetType: string;
 };
 
+export type GraphExpression =
+  | { dependencyIds: string[]; kind: "computed"; relation: string }
+  | { dependencyIds: string[]; kind: "direct"; subjects: SubjectReference[] }
+  | { children: GraphExpression[]; kind: "intersection" }
+  | { dependencyIds: string[]; kind: "inherited"; relation: string; sourceTypes: string[]; tupleset: string }
+  | { children: GraphExpression[]; kind: "union" }
+  | { base: GraphExpression; kind: "difference"; subtract: GraphExpression };
+
 export type GraphRelation = {
   dependencies: GraphDependency[];
   directSubjects: SubjectReference[];
@@ -34,6 +43,7 @@ export type GraphRelation = {
   kind: "permission" | "relation";
   line: number;
   name: string;
+  rewrite: GraphExpression;
   type: string;
 };
 
@@ -120,6 +130,11 @@ function buildSourceMap(modelText: string): SourceMap {
       return;
     }
 
+    if (/^condition\s+/.test(trimmed)) {
+      currentRelation = "";
+      return;
+    }
+
     if (relationMatch && currentType) {
       currentRelation = relationMatch[1];
       relations.set(`${currentType}.${currentRelation}`, {
@@ -129,7 +144,7 @@ function buildSourceMap(modelText: string): SourceMap {
       return;
     }
 
-    if (currentType && currentRelation && trimmed && !trimmed.startsWith("condition ")) {
+    if (currentType && currentRelation && trimmed) {
       const key = `${currentType}.${currentRelation}`;
       const existing = relations.get(key);
       if (existing) existing.expression = `${existing.expression} ${trimmed}`.trim();
@@ -182,7 +197,7 @@ export function parseAuthorizationModel(modelText: string): ParseResult {
     const sourceMap = buildSourceMap(modelText);
     const typeDefinitions = model.type_definitions ?? [];
     const dependencies: GraphDependency[] = [];
-    const dependencyKeys = new Set<string>();
+    const dependencyIds = new Map<string, string>();
 
     const addDependency = (dependency: Omit<GraphDependency, "id">) => {
       const key = [
@@ -192,70 +207,121 @@ export function parseAuthorizationModel(modelText: string): ParseResult {
         dependency.targetRelation,
         dependency.kind,
         dependency.label,
+        dependency.expressionPath.join(">"),
       ].join("|");
-      if (dependencyKeys.has(key)) return;
-      dependencyKeys.add(key);
-      dependencies.push({ ...dependency, id: `edge:${dependencyKeys.size}:${key}` });
+      const existingId = dependencyIds.get(key);
+      if (existingId) return existingId;
+      const id = `edge:${dependencyIds.size + 1}:${key}`;
+      dependencyIds.set(key, id);
+      dependencies.push({ ...dependency, id });
+      return id;
     };
 
-    const walkRewrite = (
+    const dependencyLabel = (
+      path: GraphDependency["expressionPath"],
+      leafLabel: string,
+    ) => {
+      if (path.length === 0) return leafLabel;
+      return `${path.join(" › ")}${leafLabel === "uses" ? "" : ` · ${leafLabel}`}`;
+    };
+
+    const buildExpression = (
       rewrite: Rewrite | undefined,
       targetType: TypeDefinition,
       targetRelation: string,
-      operator = "uses",
-    ) => {
-      if (!rewrite) return;
+      path: GraphDependency["expressionPath"] = [],
+    ): GraphExpression => {
+      if (!rewrite) return { dependencyIds: [], kind: "direct", subjects: [] };
 
       if (rewrite.computedUserset?.relation) {
-        addDependency({
-          kind: operator === "but not" ? "negative" : "computed",
-          label: operator,
+        const relation = rewrite.computedUserset.relation;
+        const dependencyId = addDependency({
+          expressionPath: path,
+          kind: path.includes("but not") ? "negative" : "computed",
+          label: dependencyLabel(path, "uses"),
           sourceRelation: rewrite.computedUserset.relation,
           sourceType: targetType.type,
           targetRelation,
           targetType: targetType.type,
         });
+        return { dependencyIds: [dependencyId], kind: "computed", relation };
       }
 
       const tupleToUserset = rewrite.tupleToUserset;
       if (tupleToUserset?.computedUserset?.relation && tupleToUserset.tupleset?.relation) {
         const tupleset = tupleToUserset.tupleset.relation;
         const relatedTypes = directSubjects(relationMetadata(targetType, tupleset));
-        relatedTypes.forEach((relatedType) => {
+        const dependencyIds = relatedTypes.map((relatedType) => (
           addDependency({
-            kind: operator === "but not" ? "negative" : "inherited",
-            label: `from ${tupleset}`,
+            expressionPath: path,
+            kind: path.includes("but not") ? "negative" : "inherited",
+            label: dependencyLabel(path, `from ${tupleset}`),
             sourceRelation: tupleToUserset.computedUserset?.relation,
             sourceType: relatedType.type,
             targetRelation,
             targetType: targetType.type,
-          });
-        });
+          })
+        ));
+        return {
+          dependencyIds,
+          kind: "inherited",
+          relation: tupleToUserset.computedUserset.relation,
+          sourceTypes: relatedTypes.map((relatedType) => relatedType.type),
+          tupleset,
+        };
       }
 
-      rewrite.union?.child?.forEach((child) => walkRewrite(child, targetType, targetRelation, "or"));
-      rewrite.intersection?.child?.forEach((child) => walkRewrite(child, targetType, targetRelation, "and"));
-      if (rewrite.difference) {
-        walkRewrite(rewrite.difference.base, targetType, targetRelation, operator);
-        walkRewrite(rewrite.difference.subtract, targetType, targetRelation, "but not");
+      if (rewrite.union?.child) {
+        return {
+          children: rewrite.union.child.map((child) => (
+            buildExpression(child, targetType, targetRelation, [...path, "or"])
+          )),
+          kind: "union",
+        };
       }
+
+      if (rewrite.intersection?.child) {
+        return {
+          children: rewrite.intersection.child.map((child) => (
+            buildExpression(child, targetType, targetRelation, [...path, "and"])
+          )),
+          kind: "intersection",
+        };
+      }
+
+      if (rewrite.difference) {
+        return {
+          base: buildExpression(rewrite.difference.base, targetType, targetRelation, path),
+          kind: "difference",
+          subtract: buildExpression(rewrite.difference.subtract, targetType, targetRelation, [...path, "but not"]),
+        };
+      }
+
+      const subjects = directSubjects(relationMetadata(targetType, targetRelation));
+      const ids = subjects.map((subject) => {
+        const leafLabel = subject.condition
+          ? `if ${subject.condition}`
+          : subject.wildcard
+            ? "public"
+            : "direct";
+        return addDependency({
+          expressionPath: path,
+          kind: path.includes("but not") ? "negative" : "direct",
+          label: dependencyLabel(path, leafLabel),
+          sourceRelation: subject.relation,
+          sourceType: subject.type,
+          targetRelation,
+          targetType: targetType.type,
+        });
+      });
+      return { dependencyIds: ids, kind: "direct", subjects };
     };
 
     const types: GraphType[] = typeDefinitions.map((typeDefinition) => {
       const relations: GraphRelation[] = Object.entries(typeDefinition.relations ?? {}).map(
         ([relationName, rewrite]) => {
           const subjects = directSubjects(relationMetadata(typeDefinition, relationName));
-          subjects.forEach((subject) => {
-            addDependency({
-              kind: "direct",
-              label: subject.condition ? `if ${subject.condition}` : subject.wildcard ? "public" : "direct",
-              sourceRelation: subject.relation,
-              sourceType: subject.type,
-              targetRelation: relationName,
-              targetType: typeDefinition.type,
-            });
-          });
-          walkRewrite(rewrite, typeDefinition, relationName);
+          const expression = buildExpression(rewrite, typeDefinition, relationName);
 
           const source = sourceMap.relations.get(`${typeDefinition.type}.${relationName}`);
           return {
@@ -266,6 +332,7 @@ export function parseAuthorizationModel(modelText: string): ParseResult {
             kind: subjects.length > 0 ? "relation" : "permission",
             line: source?.line ?? sourceMap.types.get(typeDefinition.type) ?? 1,
             name: relationName,
+            rewrite: expression,
             type: typeDefinition.type,
           };
         },

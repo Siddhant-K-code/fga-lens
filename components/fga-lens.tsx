@@ -27,13 +27,16 @@ import {
   formatSubject,
   parseAuthorizationModel,
   type GraphRelation,
+  type GraphExpression,
   type ModelDiagnostic,
   type ModelGraph,
 } from "@/lib/fga-model";
+import { restoreModelSession } from "@/lib/model-session";
 import { sampleModels, type SampleModel } from "@/lib/sample-models";
 
 const initialParseResult = parseAuthorizationModel(defaultModel);
 const modelDraftStorageKey = "fga-lens:model-draft:v1";
+const lastValidModelStorageKey = "fga-lens:last-valid-model:v1";
 
 function LogoMark() {
   return (
@@ -255,6 +258,73 @@ function ModelEditor({
   );
 }
 
+function ExpressionTree({ expression, type }: { expression: GraphExpression; type: string }) {
+  if (expression.kind === "union" || expression.kind === "intersection") {
+    const isUnion = expression.kind === "union";
+    return (
+      <div className={`expression-group ${expression.kind}`}>
+        <div className="expression-group-label">
+          <span>{isUnion ? "Any of" : "All of"}</span>
+          <code>{isUnion ? "OR" : "AND"}</code>
+        </div>
+        <div className="expression-children">
+          {expression.children.map((child, index) => (
+            <ExpressionTree expression={child} key={`${child.kind}-${index}`} type={type} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (expression.kind === "difference") {
+    return (
+      <div className="expression-group difference">
+        <div className="expression-group-label"><span>Difference</span><code>EXCEPT</code></div>
+        <div className="expression-children difference-children">
+          <div className="expression-scope include"><span>Include</span><ExpressionTree expression={expression.base} type={type} /></div>
+          <div className="expression-scope exclude"><span>Exclude</span><ExpressionTree expression={expression.subtract} type={type} /></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (expression.kind === "computed") {
+    return (
+      <div className="expression-leaf computed">
+        <i /><code>{type}.{expression.relation}</code><span>computed relation</span>
+      </div>
+    );
+  }
+
+  if (expression.kind === "inherited") {
+    return (
+      <div className="expression-leaf inherited">
+        <i />
+        <div>
+          {expression.sourceTypes.map((sourceType) => (
+            <code key={sourceType}>{sourceType}.{expression.relation}</code>
+          ))}
+        </div>
+        <span>from {expression.tupleset}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="expression-leaf direct">
+      <i />
+      <div>
+        {expression.subjects.map((subject) => (
+          <code key={`${subject.type}-${subject.relation}-${subject.wildcard}-${subject.condition}`}>
+            {formatSubject(subject)}{subject.condition ? ` with ${subject.condition}` : ""}
+          </code>
+        ))}
+      </div>
+      <span>direct</span>
+    </div>
+  );
+}
+
 function RelationInspector({ relation, onClose }: { relation: GraphRelation; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
 
@@ -302,20 +372,10 @@ function RelationInspector({ relation, onClose }: { relation: GraphRelation; onC
         )}
 
         <section className="inspector-section">
-          <span>Derived from</span>
-          {relation.dependencies.length > 0 ? (
-            <div className="dependency-list">
-              {relation.dependencies.map((dependency) => (
-                <div className={`dependency-row ${dependency.kind}`} key={dependency.id}>
-                  <i />
-                  <code>{dependency.sourceType}{dependency.sourceRelation ? `.${dependency.sourceRelation}` : ""}</code>
-                  <span>{dependency.label}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p>No computed dependencies. This relation is populated only through tuples.</p>
-          )}
+          <span>Authorization logic</span>
+          <div className="expression-tree">
+            <ExpressionTree expression={relation.rewrite} type={relation.type} />
+          </div>
         </section>
       </div>
     </aside>
@@ -326,6 +386,7 @@ export function FgaLens() {
   const [modelText, setModelText] = useState(defaultModel);
   const [parsed, setParsed] = useState(initialParseResult);
   const [lastValidGraph, setLastValidGraph] = useState(initialParseResult.graph!);
+  const [lastValidModelText, setLastValidModelText] = useState(defaultModel);
   const [selectedRelationId, setSelectedRelationId] = useState<string | null>(null);
   const [graphExpanded, setGraphExpanded] = useState(false);
   const [graphSession, setGraphSession] = useState(0);
@@ -340,7 +401,10 @@ export function FgaLens() {
     const nextResult = parseAuthorizationModel(nextModel);
     setModelText(nextModel);
     setParsed(nextResult);
-    if (nextResult.graph) setLastValidGraph(nextResult.graph);
+    if (nextResult.graph) {
+      setLastValidGraph(nextResult.graph);
+      setLastValidModelText(nextModel);
+    }
   }, []);
   const loadSample = useCallback((sample: SampleModel) => {
     setSelectedRelationId(null);
@@ -350,8 +414,10 @@ export function FgaLens() {
 
   useEffect(() => {
     let savedModel: string | null = null;
+    let savedLastValidModel: string | null = null;
     try {
       savedModel = window.localStorage.getItem(modelDraftStorageKey);
+      savedLastValidModel = window.localStorage.getItem(lastValidModelStorageKey);
     } catch {
       // The editor still works when storage is blocked or unavailable.
     }
@@ -359,7 +425,11 @@ export function FgaLens() {
     let active = true;
     window.queueMicrotask(() => {
       if (!active) return;
-      if (savedModel !== null) updateModel(savedModel);
+      const restored = restoreModelSession(savedModel, savedLastValidModel);
+      setModelText(restored.modelText);
+      setParsed(restored.parsed);
+      setLastValidGraph(restored.lastValidGraph);
+      setLastValidModelText(restored.lastValidModelText);
       setDraftStorageReady(true);
     });
     return () => { active = false; };
@@ -369,10 +439,11 @@ export function FgaLens() {
     if (!draftStorageReady) return;
     try {
       window.localStorage.setItem(modelDraftStorageKey, modelText);
+      window.localStorage.setItem(lastValidModelStorageKey, lastValidModelText);
     } catch {
       // Ignore quota and privacy-mode failures rather than interrupting editing.
     }
-  }, [draftStorageReady, modelText]);
+  }, [draftStorageReady, lastValidModelText, modelText]);
 
   useEffect(() => {
     const closeExpandedGraph = (event: globalThis.KeyboardEvent) => {

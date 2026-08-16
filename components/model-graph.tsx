@@ -33,9 +33,10 @@ import {
   UnfoldVertical,
   Users,
 } from "lucide-react";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { GraphRelation, GraphType, ModelGraph } from "@/lib/fga-model";
+import { focusedTypeIds, layoutGraphTypes } from "@/lib/graph-layout";
 
 type TypeNodeData = {
   collapsed: boolean;
@@ -140,37 +141,6 @@ function TypeNodeCard({ data }: NodeProps<FgaTypeNode>) {
 
 const nodeTypes = { fgaType: TypeNodeCard };
 
-function graphDepths(graph: ModelGraph) {
-  const names = graph.types.map((type) => type.name);
-  const incoming = new Map(names.map((name) => [name, 0]));
-  const outgoing = new Map(names.map((name) => [name, new Set<string>()]));
-
-  graph.dependencies.forEach((dependency) => {
-    if (dependency.sourceType === dependency.targetType) return;
-    const targets = outgoing.get(dependency.sourceType);
-    if (!targets || targets.has(dependency.targetType) || !incoming.has(dependency.targetType)) return;
-    targets.add(dependency.targetType);
-    incoming.set(dependency.targetType, (incoming.get(dependency.targetType) ?? 0) + 1);
-  });
-
-  const depth = new Map(names.map((name) => [name, 0]));
-  const queue = names.filter((name) => incoming.get(name) === 0);
-  const visited = new Set<string>();
-
-  while (queue.length) {
-    const source = queue.shift()!;
-    visited.add(source);
-    outgoing.get(source)?.forEach((target) => {
-      depth.set(target, Math.max(depth.get(target) ?? 0, (depth.get(source) ?? 0) + 1));
-      incoming.set(target, (incoming.get(target) ?? 1) - 1);
-      if (incoming.get(target) === 0) queue.push(target);
-    });
-  }
-
-  names.filter((name) => !visited.has(name)).forEach((name, index) => depth.set(name, index % 2));
-  return depth;
-}
-
 function buildElements(
   graph: ModelGraph,
   collapsedTypes: Set<string>,
@@ -179,15 +149,6 @@ function buildElements(
   onSelect: (relation: GraphRelation) => void,
   onToggle: (typeId: string) => void,
 ) {
-  const depths = graphDepths(graph);
-  const columns = new Map<number, GraphType[]>();
-  graph.types.forEach((type) => {
-    const column = depths.get(type.name) ?? 0;
-    const columnTypes = columns.get(column) ?? [];
-    columnTypes.push(type);
-    columns.set(column, columnTypes);
-  });
-
   const nodes: FgaTypeNode[] = [];
   const selectedRelation = graph.types
     .flatMap((type) => type.relations)
@@ -204,23 +165,20 @@ function buildElements(
     relatedTypes.add(`type:${dependency.sourceType}`);
     relatedTypes.add(`type:${dependency.targetType}`);
   });
+  const visibleTypeIds = selectedRelation && focusRelated
+    ? focusedTypeIds(graph, selectedRelation.id)
+    : undefined;
 
-  [...columns.entries()].sort(([a], [b]) => a - b).forEach(([column, types]) => {
-    let y = 0;
-    types.forEach((type) => {
+  layoutGraphTypes(graph, collapsedTypes, visibleTypeIds).forEach(({ type, x, y }) => {
       const collapsed = collapsedTypes.has(type.id);
-      const dimmed = Boolean(selectedRelation && focusRelated && !relatedTypes.has(type.id));
       nodes.push({
-        className: dimmed ? "fga-node-dimmed" : undefined,
         data: { collapsed, modelType: type, onSelect, onToggle, selectedRelationId },
         dragHandle: ".fga-type-header",
         id: type.id,
-        position: { x: column * 350, y },
+        position: { x, y },
         type: "fgaType",
         zIndex: relatedTypes.has(type.id) ? 2 : 1,
       });
-      y += collapsed ? 128 : 76 + Math.max(type.relations.length, 1) * 41 + 58;
-    });
   });
 
   const edgeColors = {
@@ -231,6 +189,8 @@ function buildElements(
   };
   const edges: Edge[] = graph.dependencies.map((dependency) => {
     const related = !selectedRelation || relatedDependencies.some((candidate) => candidate.id === dependency.id);
+    const endpointsVisible = !visibleTypeIds
+      || (visibleTypeIds.has(`type:${dependency.sourceType}`) && visibleTypeIds.has(`type:${dependency.targetType}`));
     const edgeLabel = related && selectedRelation && (
       dependency.kind === "inherited" || dependency.kind === "negative" || dependency.label !== "direct"
     )
@@ -239,7 +199,7 @@ function buildElements(
     return {
     animated: related && Boolean(selectedRelation) && dependency.kind === "inherited",
     className: `fga-edge ${dependency.kind}`,
-    hidden: Boolean(selectedRelation && focusRelated && !related),
+    hidden: !endpointsVisible || Boolean(selectedRelation && focusRelated && !related),
     id: dependency.id,
     label: edgeLabel,
     labelBgBorderRadius: 4,
@@ -359,20 +319,30 @@ export function ModelGraphCanvas({
     [collapsedTypes, focusRelated, graph, onSelect, selectedRelationId, toggleType],
   );
   const [nodes, setNodes, onNodesChange] = useNodesState<FgaTypeNode>(elements.nodes);
-  const signature = `${graph.types.length}:${graph.relationCount}:${graph.dependencies.length}:${viewKey}`;
+  const layoutSignature = elements.nodes.map((node) => [
+    node.id,
+    node.position.x,
+    node.position.y,
+    node.data.collapsed,
+    node.data.modelType.relations.map((relation) => relation.id).join(","),
+  ].join(":" )).join("|");
+  const signature = `${layoutSignature}:${viewKey}`;
+  const previousLayoutSignature = useRef(layoutSignature);
   const allCollapsed = graph.types
     .filter((type) => type.relations.length > 0)
     .every((type) => collapsedTypes.has(type.id));
 
   useEffect(() => {
     setNodes((currentNodes) => {
+      const shouldRelayout = previousLayoutSignature.current !== layoutSignature;
       const currentById = new Map(currentNodes.map((node) => [node.id, node]));
       return elements.nodes.map((node) => ({
         ...node,
-        position: currentById.get(node.id)?.position ?? node.position,
+        position: shouldRelayout ? node.position : currentById.get(node.id)?.position ?? node.position,
       }));
     });
-  }, [elements.nodes, setNodes]);
+    previousLayoutSignature.current = layoutSignature;
+  }, [elements.nodes, layoutSignature, setNodes]);
 
   const toggleAll = useCallback(() => {
     setCollapsedTypes(allCollapsed

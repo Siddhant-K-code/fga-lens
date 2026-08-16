@@ -1282,6 +1282,121 @@ textarea:focus-visible {
   padding: 5px 6px;
 }
 
+.expression-tree {
+  margin-top: 10px;
+}
+
+.expression-group {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fbfcfb;
+  padding: 8px;
+}
+
+.expression-group + .expression-group,
+.expression-leaf + .expression-group,
+.expression-group + .expression-leaf,
+.expression-leaf + .expression-leaf {
+  margin-top: 6px;
+}
+
+.expression-group-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+
+.expression-group-label span,
+.expression-scope > span {
+  color: #66736d;
+  font-size: 8px;
+  font-weight: 730;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.expression-group-label code {
+  border-radius: 4px;
+  background: var(--purple-soft);
+  color: var(--purple);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8px;
+  font-weight: 760;
+  padding: 3px 5px;
+}
+
+.expression-group.intersection > .expression-group-label code {
+  background: #e8f6f0;
+  color: var(--green);
+}
+
+.expression-group.difference > .expression-group-label code {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.expression-children {
+  border-left: 1px solid #d8e0dc;
+  padding-left: 7px;
+}
+
+.expression-scope {
+  border-radius: 7px;
+  padding: 6px;
+}
+
+.expression-scope + .expression-scope { margin-top: 6px; }
+.expression-scope.include { background: #f3f8f5; }
+.expression-scope.exclude { background: #fff5f4; }
+.expression-scope.exclude > span { color: var(--red); }
+.expression-scope > .expression-group,
+.expression-scope > .expression-leaf { margin-top: 5px; }
+
+.expression-leaf {
+  display: grid;
+  min-height: 36px;
+  grid-template-columns: 6px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #e7ebe9;
+  border-radius: 7px;
+  background: #fff;
+  padding: 6px 7px;
+}
+
+.expression-leaf > i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.expression-leaf.direct > i { background: var(--blue); }
+.expression-leaf.computed > i { background: var(--purple); }
+.expression-leaf.inherited > i { background: var(--green); }
+
+.expression-leaf > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.expression-leaf code {
+  overflow: hidden;
+  color: #33423c;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expression-leaf > span {
+  color: var(--subtle);
+  font-size: 8px;
+  white-space: nowrap;
+}
+
 .dependency-list {
   display: flex;
   flex-direction: column;
