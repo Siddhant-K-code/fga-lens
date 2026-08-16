@@ -132,7 +132,7 @@ textarea:focus-visible {
   justify-content: center;
   color: #7e8b86;
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 9.5px;
+  font-size: 10.5px;
 }
 
 .document-path b { color: #46514d; font-weight: 500; }
@@ -150,7 +150,7 @@ textarea:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 620;
 }
 
@@ -205,7 +205,7 @@ textarea:focus-visible {
 .graph-toolbar > div:first-child > div > span {
   display: block;
   color: var(--subtle);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 760;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -225,7 +225,7 @@ textarea:focus-visible {
   gap: 6px;
   color: var(--green);
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -289,7 +289,7 @@ textarea:focus-visible {
 
 .sample-picker-copy small {
   color: var(--subtle);
-  font-size: 6.5px;
+  font-size: 7.5px;
   font-weight: 760;
   letter-spacing: .09em;
   text-transform: uppercase;
@@ -297,7 +297,7 @@ textarea:focus-visible {
 
 .sample-picker-copy strong {
   overflow: hidden;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 680;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -343,14 +343,14 @@ textarea:focus-visible {
 
 .sample-menu-heading > div span {
   color: var(--green);
-  font-size: 7px;
+  font-size: 8px;
   font-weight: 760;
   letter-spacing: .09em;
   text-transform: uppercase;
 }
 
 .sample-menu-heading > div strong {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 710;
   letter-spacing: -.015em;
 }
@@ -360,7 +360,7 @@ textarea:focus-visible {
   border-radius: 999px;
   background: var(--green-soft);
   color: var(--green);
-  font-size: 7px;
+  font-size: 8px;
   font-weight: 680;
   padding: 4px 6px;
 }
@@ -405,7 +405,7 @@ textarea:focus-visible {
   background: #eef2f0;
   color: #7e8b86;
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 7px;
+  font-size: 8px;
 }
 
 .sample-menu-list > button.selected .sample-menu-marker {
@@ -420,12 +420,12 @@ textarea:focus-visible {
   gap: 2px;
 }
 
-.sample-menu-copy strong { font-size: 9px; font-weight: 680; }
+.sample-menu-copy strong { font-size: 10px; font-weight: 680; }
 
 .sample-menu-copy small {
   overflow: hidden;
   color: var(--muted);
-  font-size: 7.5px;
+  font-size: 8.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -433,7 +433,7 @@ textarea:focus-visible {
 .sample-menu-list > button > code {
   color: var(--subtle);
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 7px;
+  font-size: 8px;
   white-space: nowrap;
 }
 
@@ -445,7 +445,7 @@ textarea:focus-visible {
   gap: 5px;
   border-top: 1px solid var(--line);
   color: #65726c;
-  font-size: 7.5px;
+  font-size: 8.5px;
   font-weight: 620;
   text-decoration: none;
 }
@@ -483,7 +483,7 @@ textarea:focus-visible {
   border-bottom: 1px solid #2a3531;
   color: #cad5d0;
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 9px;
+  font-size: 10px;
   padding: 0 12px;
 }
 
@@ -517,7 +517,7 @@ textarea:focus-visible {
   border-radius: 999px;
   background: rgb(31 153 107 / 9%);
   color: #8be0bb;
-  font-size: 7.5px;
+  font-size: 8.5px;
   font-weight: 760;
   letter-spacing: 0.07em;
   padding: 4px 7px;
@@ -539,7 +539,7 @@ textarea:focus-visible {
   background: #222c29;
   color: #a9b6b0;
   cursor: pointer;
-  font-size: 8px;
+  font-size: 9px;
   padding: 5px 7px;
 }
 
@@ -563,8 +563,8 @@ textarea:focus-visible {
   min-width: 100%;
   color: #cbd7d2;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 10.5px;
-  line-height: 22px;
+  font-size: 12px;
+  line-height: 24px;
   margin: 0;
   padding: 12px 0 24px;
   pointer-events: none;
@@ -574,7 +574,7 @@ textarea:focus-visible {
 .editor-row {
   display: grid;
   min-width: 100%;
-  height: 22px;
+  height: 24px;
   grid-template-columns: 42px max-content;
   padding-right: 18px;
 }
@@ -591,7 +591,7 @@ textarea:focus-visible {
 
 .editor-line-number {
   color: #53615c;
-  font-size: 8.5px;
+  font-size: 9.5px;
   text-align: center;
   user-select: none;
 }
@@ -612,8 +612,8 @@ textarea:focus-visible {
   color: transparent;
   -webkit-text-fill-color: transparent;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 10.5px;
-  line-height: 22px;
+  font-size: 12px;
+  line-height: 24px;
   outline: none;
   overflow: auto;
   padding: 12px 18px 24px 42px;
@@ -635,7 +635,7 @@ textarea:focus-visible {
   border-top: 1px solid #2a3431;
   color: #73817b;
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 7.5px;
+  font-size: 8.5px;
   padding: 0 12px;
 }
 
@@ -693,13 +693,13 @@ textarea:focus-visible {
 
 .graph-stats span {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .graph-stats strong {
   color: var(--ink);
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .graph-legend {
@@ -721,7 +721,7 @@ textarea:focus-visible {
   align-items: center;
   gap: 5px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 9px;
 }
 
 .graph-legend i {
@@ -744,7 +744,7 @@ textarea:focus-visible {
   background: #fff;
   color: #4f5c57;
   cursor: pointer;
-  font-size: 8.5px;
+  font-size: 9.5px;
   font-weight: 660;
   padding: 0 9px;
   box-shadow: 0 1px 2px rgb(20 30 26 / 4%);
@@ -872,7 +872,7 @@ textarea:focus-visible {
 .fga-type-header small {
   color: var(--subtle);
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 7px;
+  font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -881,7 +881,7 @@ textarea:focus-visible {
 .fga-type-header strong {
   overflow: hidden;
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 680;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -890,7 +890,7 @@ textarea:focus-visible {
 .fga-type-header > code {
   color: var(--subtle);
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 7px;
+  font-size: 8px;
 }
 
 .node-collapse {
@@ -928,14 +928,14 @@ textarea:focus-visible {
   color: var(--muted);
   cursor: pointer;
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 8px;
+  font-size: 9px;
   padding: 0 13px 0 47px;
 }
 
 .collapsed-summary span {
   color: var(--green);
   font-family: Inter, ui-sans-serif, sans-serif;
-  font-size: 7.5px;
+  font-size: 8.5px;
   font-weight: 700;
 }
 
@@ -987,7 +987,7 @@ textarea:focus-visible {
 .relation-copy strong {
   overflow: hidden;
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 9.5px;
+  font-size: 10.5px;
   font-weight: 640;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -995,7 +995,7 @@ textarea:focus-visible {
 
 .relation-copy small {
   color: var(--subtle);
-  font-size: 7px;
+  font-size: 8px;
   text-transform: capitalize;
 }
 
@@ -1012,7 +1012,7 @@ textarea:focus-visible {
 
 .principal-note {
   color: #678078;
-  font-size: 8px;
+  font-size: 9px;
   margin: -7px 0 11px 53px;
 }
 
@@ -1073,7 +1073,7 @@ textarea:focus-visible {
   background: transparent;
   color: #56645e;
   cursor: pointer;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 660;
   padding: 0 7px;
 }
@@ -1097,7 +1097,7 @@ textarea:focus-visible {
   width: 38px;
   color: #75817c;
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 7.5px;
+  font-size: 8.5px;
   text-align: center;
 }
 
@@ -1112,7 +1112,7 @@ textarea:focus-visible {
   align-items: center;
   gap: 5px;
   color: #85908c;
-  font-size: 7.5px;
+  font-size: 8.5px;
   padding: 0 5px 0 3px;
   white-space: nowrap;
 }
@@ -1168,7 +1168,7 @@ textarea:focus-visible {
 .relation-inspector > header span,
 .inspector-section > span {
   color: var(--subtle);
-  font-size: 7.5px;
+  font-size: 8.5px;
   font-weight: 760;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1177,7 +1177,7 @@ textarea:focus-visible {
 .relation-inspector > header strong {
   overflow: hidden;
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 11px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1206,7 +1206,7 @@ textarea:focus-visible {
   align-items: center;
   gap: 5px;
   border-radius: 6px;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 680;
   padding: 5px 7px;
   text-transform: capitalize;
@@ -1231,7 +1231,7 @@ textarea:focus-visible {
   justify-content: space-between;
   border-bottom: 1px solid #303a36;
   color: #81908a;
-  font-size: 7.5px;
+  font-size: 8.5px;
   font-weight: 720;
   letter-spacing: 0.08em;
   padding: 0 10px;
@@ -1245,14 +1245,14 @@ textarea:focus-visible {
   background: transparent;
   color: #aebbb6;
   cursor: pointer;
-  font-size: 8px;
+  font-size: 9px;
 }
 
 .inspector-expression > code {
   display: block;
   overflow-wrap: anywhere;
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1.6;
   padding: 12px;
 }
@@ -1278,7 +1278,7 @@ textarea:focus-visible {
   background: #f7f9f8;
   color: #44534d;
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 8px;
+  font-size: 9px;
   padding: 5px 6px;
 }
 
@@ -1314,16 +1314,16 @@ textarea:focus-visible {
 .dependency-row code {
   overflow: hidden;
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 8px;
+  font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.dependency-row span { color: var(--muted); font-size: 7.5px; }
+.dependency-row span { color: var(--muted); font-size: 8.5px; }
 
 .inspector-section p {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1.5;
   margin: 8px 0 0;
 }
@@ -1348,8 +1348,8 @@ textarea:focus-visible {
 }
 
 .model-error-toast > div { display: flex; flex-direction: column; gap: 3px; }
-.model-error-toast strong { color: #8e312f; font-size: 9px; }
-.model-error-toast span { color: #a65753; font-family: "SFMono-Regular", Consolas, monospace; font-size: 7.5px; }
+.model-error-toast strong { color: #8e312f; font-size: 10px; }
+.model-error-toast span { color: #a65753; font-family: "SFMono-Regular", Consolas, monospace; font-size: 8.5px; }
 
 @keyframes inspector-in {
   from { opacity: 0; transform: translateX(10px) scale(.985); }

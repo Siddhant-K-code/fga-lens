@@ -245,7 +245,7 @@ function buildElements(
     labelBgBorderRadius: 4,
     labelBgPadding: [5, 3],
     labelBgStyle: { fill: "#f9fbfa", fillOpacity: 0.94 },
-    labelStyle: { fill: "#65716c", fontSize: 9, fontWeight: 650 },
+    labelStyle: { fill: "#65716c", fontSize: 10, fontWeight: 650 },
     markerEnd: { color: edgeColors[dependency.kind], height: 14, type: MarkerType.ArrowClosed, width: 14 },
     source: `type:${dependency.sourceType}`,
     sourceHandle: dependency.sourceRelation ? `out:${dependency.sourceRelation}` : "out:$type",
