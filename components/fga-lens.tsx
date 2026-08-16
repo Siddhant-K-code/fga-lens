@@ -9,10 +9,12 @@ import {
   FileCode2,
   GitFork,
   Link2,
+  Maximize2,
+  Minimize2,
   RotateCcw,
   X,
 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { KeyboardEvent } from "react";
 
 import { ModelGraphCanvas } from "@/components/model-graph";
@@ -228,6 +230,7 @@ export function FgaLens() {
   const [parsed, setParsed] = useState(initialParseResult);
   const [lastValidGraph, setLastValidGraph] = useState(initialParseResult.graph!);
   const [selectedRelationId, setSelectedRelationId] = useState<string | null>(null);
+  const [graphExpanded, setGraphExpanded] = useState(false);
 
   const graph = parsed.graph ?? lastValidGraph;
   const selectedRelation = graph.types
@@ -239,6 +242,14 @@ export function FgaLens() {
     setModelText(nextModel);
     setParsed(nextResult);
     if (nextResult.graph) setLastValidGraph(nextResult.graph);
+  }, []);
+
+  useEffect(() => {
+    const closeExpandedGraph = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setGraphExpanded(false);
+    };
+    window.addEventListener("keydown", closeExpandedGraph);
+    return () => window.removeEventListener("keydown", closeExpandedGraph);
   }, []);
 
   return (
@@ -259,7 +270,7 @@ export function FgaLens() {
         </div>
       </header>
 
-      <div className="studio-workspace">
+      <div className={`studio-workspace ${graphExpanded ? "graph-expanded" : ""}`}>
         <aside className="model-pane">
           <div className="pane-heading">
             <div><span>Source</span><h1>Authorization model</h1></div>
@@ -286,19 +297,32 @@ export function FgaLens() {
               <span><strong>{graph.relationCount}</strong> relations</span>
               <span><strong>{graph.dependencies.length}</strong> edges</span>
             </div>
-            <div className="graph-legend" aria-label="Graph edge legend">
-              <span><i className="direct" /> direct</span>
-              <span><i className="computed" /> computed</span>
-              <span><i className="inherited" /> inherited</span>
+            <div className="graph-toolbar-actions">
+              <div className="graph-legend" aria-label="Graph edge legend">
+                <span><i className="direct" /> direct</span>
+                <span><i className="computed" /> computed</span>
+                <span><i className="inherited" /> inherited</span>
+              </div>
+              <button
+                aria-label={graphExpanded ? "Exit expanded graph" : "Expand graph"}
+                aria-pressed={graphExpanded}
+                className="expand-graph-button"
+                onClick={() => setGraphExpanded((current) => !current)}
+                title={graphExpanded ? "Exit expanded view (Esc)" : "Give the graph the full workspace"}
+              >
+                {graphExpanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                <span>{graphExpanded ? "Exit" : "Expand"}</span>
+              </button>
             </div>
           </div>
 
-          <div className="graph-canvas">
+          <div className={`graph-canvas ${selectedRelation ? "has-inspector" : ""}`}>
             <ModelGraphCanvas
               graph={graph}
               onClearSelection={() => setSelectedRelationId(null)}
               onSelect={selectRelation}
               selectedRelationId={selectedRelationId}
+              viewKey={`${graphExpanded ? "expanded" : "split"}:${selectedRelationId ?? "all"}`}
             />
             {parsed.diagnostics.length > 0 && (
               <div className="model-error-toast">
