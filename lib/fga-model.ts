@@ -1,5 +1,7 @@
 import { transformer, validator } from "@openfga/syntax-transformer";
 
+import { googleDriveModel } from "@/lib/sample-models";
+
 export type ModelDiagnostic = {
   column: number;
   line: number;
@@ -96,31 +98,7 @@ type SourceMap = {
   types: Map<string, number>;
 };
 
-export const defaultModel = `model
-  schema 1.1
-
-type doc
-  relations
-    define can_change_owner: owner
-    define can_read: viewer or owner or viewer from parent
-    define can_share: owner or owner from parent
-    define can_write: owner or owner from parent
-    define owner: [user]
-    define parent: [folder]
-    define viewer: [user, user:*, group#member]
-
-type folder
-  relations
-    define can_create_file: owner
-    define owner: [user]
-    define parent: [folder]
-    define viewer: [user, user:*, group#member] or owner or viewer from parent
-
-type group
-  relations
-    define member: [user]
-
-type user`;
+export const defaultModel = googleDriveModel;
 
 function buildSourceMap(modelText: string): SourceMap {
   const lines = modelText.split("\n");
@@ -132,8 +110,8 @@ function buildSourceMap(modelText: string): SourceMap {
   lines.forEach((sourceLine, index) => {
     const line = index + 1;
     const trimmed = sourceLine.trim();
-    const typeMatch = trimmed.match(/^type\s+([a-zA-Z_]\w*)/);
-    const relationMatch = trimmed.match(/^define\s+([a-zA-Z_]\w*)\s*:\s*(.*)$/);
+    const typeMatch = trimmed.match(/^type\s+([^\s]+)\s*$/);
+    const relationMatch = trimmed.match(/^define\s+([^\s:]+)\s*:\s*(.*)$/);
 
     if (typeMatch) {
       currentType = typeMatch[1];

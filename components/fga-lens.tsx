@@ -2,10 +2,13 @@
 
 import {
   AlertTriangle,
+  BookOpen,
   Braces,
   Check,
   CheckCircle2,
+  ChevronDown,
   Copy,
+  ExternalLink,
   FileCode2,
   GitFork,
   Link2,
@@ -14,7 +17,7 @@ import {
   RotateCcw,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 
 import { ModelGraphCanvas } from "@/components/model-graph";
@@ -27,6 +30,7 @@ import {
   type ModelDiagnostic,
   type ModelGraph,
 } from "@/lib/fga-model";
+import { sampleModels, type SampleModel } from "@/lib/sample-models";
 
 const initialParseResult = parseAuthorizationModel(defaultModel);
 const modelDraftStorageKey = "fga-lens:model-draft:v1";
@@ -39,6 +43,98 @@ function LogoMark() {
       <div className="logo-dot logo-dot-c" />
       <div className="logo-line logo-line-a" />
       <div className="logo-line logo-line-b" />
+    </div>
+  );
+}
+
+function isSameModel(first: string, second: string) {
+  return first.trim() === second.trim();
+}
+
+function ExampleModelPicker({
+  modelText,
+  onSelect,
+}: {
+  modelText: string;
+  onSelect: (sample: SampleModel) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const activeSample = sampleModels.find((sample) => isSameModel(sample.model, modelText));
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!pickerRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  return (
+    <div className="sample-picker" ref={pickerRef}>
+      <button
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className={`sample-picker-trigger ${open ? "open" : ""}`}
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        <span className="sample-picker-icon"><BookOpen size={13} /></span>
+        <span className="sample-picker-copy">
+          <small>Example</small>
+          <strong>{activeSample?.label ?? "Custom model"}</strong>
+        </span>
+        <ChevronDown className="sample-picker-chevron" size={13} />
+      </button>
+
+      {open && (
+        <div aria-label="Official OpenFGA sample stores" className="sample-picker-menu" role="menu">
+          <div className="sample-menu-heading">
+            <div><span>Official examples</span><strong>Sample stores</strong></div>
+            <span>{sampleModels.length} models</span>
+          </div>
+          <div className="sample-menu-list">
+            {sampleModels.map((sample, index) => {
+              const selected = activeSample?.id === sample.id;
+              return (
+                <button
+                  aria-checked={selected}
+                  className={selected ? "selected" : ""}
+                  key={sample.id}
+                  onClick={() => {
+                    onSelect(sample);
+                    setOpen(false);
+                  }}
+                  role="menuitemradio"
+                  type="button"
+                >
+                  <span className="sample-menu-marker">{selected ? <Check size={12} /> : index + 1}</span>
+                  <span className="sample-menu-copy">
+                    <strong>{sample.label}</strong>
+                    <small>{sample.description}</small>
+                  </span>
+                  <code>{sample.typeCount}T · {sample.relationCount}R</code>
+                </button>
+              );
+            })}
+          </div>
+          <a
+            href="https://github.com/openfga/sample-stores/tree/main/stores"
+            rel="noreferrer"
+            target="_blank"
+          >
+            View source on GitHub <ExternalLink size={11} />
+          </a>
+        </div>
+      )}
     </div>
   );
 }
@@ -232,6 +328,7 @@ export function FgaLens() {
   const [lastValidGraph, setLastValidGraph] = useState(initialParseResult.graph!);
   const [selectedRelationId, setSelectedRelationId] = useState<string | null>(null);
   const [graphExpanded, setGraphExpanded] = useState(false);
+  const [graphSession, setGraphSession] = useState(0);
   const [draftStorageReady, setDraftStorageReady] = useState(false);
 
   const graph = parsed.graph ?? lastValidGraph;
@@ -245,6 +342,11 @@ export function FgaLens() {
     setParsed(nextResult);
     if (nextResult.graph) setLastValidGraph(nextResult.graph);
   }, []);
+  const loadSample = useCallback((sample: SampleModel) => {
+    setSelectedRelationId(null);
+    setGraphSession((current) => current + 1);
+    updateModel(sample.model);
+  }, [updateModel]);
 
   useEffect(() => {
     let savedModel: string | null = null;
@@ -302,7 +404,10 @@ export function FgaLens() {
         <aside className="model-pane">
           <div className="pane-heading">
             <div><span>Source</span><h1>Authorization model</h1></div>
-            <span className="live-label"><i /> live</span>
+            <div className="pane-heading-actions">
+              <ExampleModelPicker modelText={modelText} onSelect={loadSample} />
+              <span className="live-label"><i /> live</span>
+            </div>
           </div>
           <ModelEditor
             diagnostics={parsed.diagnostics}
@@ -347,6 +452,7 @@ export function FgaLens() {
           <div className={`graph-canvas ${selectedRelation ? "has-inspector" : ""}`}>
             <ModelGraphCanvas
               graph={graph}
+              key={graphSession}
               onClearSelection={() => setSelectedRelationId(null)}
               onSelect={selectRelation}
               selectedRelationId={selectedRelationId}
