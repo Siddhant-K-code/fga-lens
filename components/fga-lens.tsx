@@ -29,6 +29,7 @@ import {
 } from "@/lib/fga-model";
 
 const initialParseResult = parseAuthorizationModel(defaultModel);
+const modelDraftStorageKey = "fga-lens:model-draft:v1";
 
 function LogoMark() {
   return (
@@ -231,6 +232,7 @@ export function FgaLens() {
   const [lastValidGraph, setLastValidGraph] = useState(initialParseResult.graph!);
   const [selectedRelationId, setSelectedRelationId] = useState<string | null>(null);
   const [graphExpanded, setGraphExpanded] = useState(false);
+  const [draftStorageReady, setDraftStorageReady] = useState(false);
 
   const graph = parsed.graph ?? lastValidGraph;
   const selectedRelation = graph.types
@@ -243,6 +245,32 @@ export function FgaLens() {
     setParsed(nextResult);
     if (nextResult.graph) setLastValidGraph(nextResult.graph);
   }, []);
+
+  useEffect(() => {
+    let savedModel: string | null = null;
+    try {
+      savedModel = window.localStorage.getItem(modelDraftStorageKey);
+    } catch {
+      // The editor still works when storage is blocked or unavailable.
+    }
+
+    let active = true;
+    window.queueMicrotask(() => {
+      if (!active) return;
+      if (savedModel !== null) updateModel(savedModel);
+      setDraftStorageReady(true);
+    });
+    return () => { active = false; };
+  }, [updateModel]);
+
+  useEffect(() => {
+    if (!draftStorageReady) return;
+    try {
+      window.localStorage.setItem(modelDraftStorageKey, modelText);
+    } catch {
+      // Ignore quota and privacy-mode failures rather than interrupting editing.
+    }
+  }, [draftStorageReady, modelText]);
 
   useEffect(() => {
     const closeExpandedGraph = (event: globalThis.KeyboardEvent) => {
