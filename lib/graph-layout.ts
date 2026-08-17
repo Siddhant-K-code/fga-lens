@@ -118,7 +118,7 @@ export function computeGraphDepths(graph: ModelGraph, includedTypeIds?: Set<stri
 }
 
 export function estimateTypeNodeHeight(type: GraphType, collapsed: boolean) {
-  if (type.relations.length === 0) return 76;
+  if (type.relations.length === 0) return 60;
   if (collapsed) return 92;
   return 68 + type.relations.length * 40;
 }

@@ -67,6 +67,7 @@ function TypeNodeCard({ data }: NodeProps<FgaTypeNode>) {
           <small>type</small>
           <strong>{modelType.name}</strong>
         </span>
+        {isPrincipal && <span className="principal-badge">Principal</span>}
         <code>L{modelType.line}</code>
         {!isPrincipal && (
           <button
@@ -109,14 +110,12 @@ function TypeNodeCard({ data }: NodeProps<FgaTypeNode>) {
             </button>
           ))}
         </div>
-      ) : isPrincipal ? (
-        <p className="principal-note">Principal type</p>
-      ) : (
+      ) : !isPrincipal ? (
         <button className="collapsed-summary nodrag" onClick={() => onToggle(modelType.id)}>
           {modelType.relations.length} {modelType.relations.length === 1 ? "relation" : "relations"}
           <span>Show</span>
         </button>
-      )}
+      ) : null}
       {collapsed && modelType.relations.map((relation) => (
         <Fragment key={relation.id}>
           <Handle

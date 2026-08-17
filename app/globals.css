@@ -940,6 +940,18 @@ textarea:focus-visible {
   font-size: 8px;
 }
 
+.principal-badge {
+  border: 1px solid #c6e8da;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 72%);
+  color: var(--green);
+  font-size: 7.5px;
+  font-weight: 720;
+  letter-spacing: .03em;
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+
 .node-collapse {
   display: inline-flex;
   width: 25px;
@@ -1055,12 +1067,6 @@ textarea:focus-visible {
   border-radius: 5px;
   background: #fff5dc;
   color: #96701c;
-}
-
-.principal-note {
-  color: #678078;
-  font-size: 9px;
-  margin: -7px 0 11px 53px;
 }
 
 .react-flow__handle {

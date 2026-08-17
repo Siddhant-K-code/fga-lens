@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { parseAuthorizationModel } from "@/lib/fga-model";
-import { computeGraphDepths, focusedTypeIds, layoutGraphTypes } from "@/lib/graph-layout";
+import {
+  computeGraphDepths,
+  estimateTypeNodeHeight,
+  focusedTypeIds,
+  layoutGraphTypes,
+} from "@/lib/graph-layout";
 import { googleDriveModel } from "@/lib/sample-models";
 
 function graph(model: string) {
@@ -27,6 +32,15 @@ type ${second}
 }
 
 describe("graph layout", () => {
+  it("uses compact, explicit sizing for principal and single-relation cards", () => {
+    const model = graph(cycleModel("alpha", "beta"));
+    const principal = model.types.find((type) => type.name === "user")!;
+    const oneRelation = model.types.find((type) => type.name === "alpha")!;
+
+    expect(estimateTypeNodeHeight(principal, false)).toBe(60);
+    expect(estimateTypeNodeHeight(oneRelation, false)).toBe(108);
+  });
+
   it("places a strongly connected component deterministically", () => {
     const forward = graph(cycleModel("alpha", "beta"));
     const reversed = graph(cycleModel("beta", "alpha"));
