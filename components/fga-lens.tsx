@@ -474,6 +474,14 @@ export function FgaLens() {
             {parsed.diagnostics.length ? <AlertTriangle size={12} /> : <CheckCircle2 size={12} />}
             {parsed.diagnostics.length ? "Model has issues" : "Model valid"}
           </span>
+          <a
+            aria-label="View FGA Lens source on GitHub"
+            href="https://github.com/Siddhant-K-code/fga-lens"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <GitFork size={13} /> GitHub
+          </a>
           <a href="https://openfga.dev/docs/configuration-language" target="_blank" rel="noreferrer">
             <FileCode2 size={13} /> DSL reference
           </a>
