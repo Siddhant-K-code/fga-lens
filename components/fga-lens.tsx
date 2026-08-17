@@ -15,6 +15,7 @@ import {
   Maximize2,
   Minimize2,
   RotateCcw,
+  ShieldCheck,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -212,6 +213,14 @@ function ModelEditor({
             </button>
           )}
         </div>
+      </div>
+
+      <div className="local-trust-note" role="note">
+        <span className="local-trust-icon"><ShieldCheck size={13} /></span>
+        <span>
+          <strong>Local processing</strong>
+          <small>Model contents are never uploaded.</small>
+        </span>
       </div>
 
       <div className="editor-surface">

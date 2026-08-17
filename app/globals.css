@@ -545,6 +545,53 @@ textarea:focus-visible {
 
 .editor-actions button:hover { background: #2b3733; color: #eef5f2; }
 
+.local-trust-note {
+  display: flex;
+  min-height: 38px;
+  flex: 0 0 38px;
+  align-items: center;
+  gap: 9px;
+  border-bottom: 1px solid #263b33;
+  background: linear-gradient(90deg, rgb(25 180 123 / 10%), rgb(25 180 123 / 3%));
+  color: #b9c8c2;
+  padding: 0 12px;
+}
+
+.local-trust-icon {
+  display: inline-flex;
+  width: 23px;
+  height: 23px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #315044;
+  border-radius: 7px;
+  background: rgb(31 153 107 / 10%);
+  color: #6edbb1;
+}
+
+.local-trust-note > span:last-child {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.local-trust-note strong {
+  color: #9de3c4;
+  font-size: 9px;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+.local-trust-note small {
+  overflow: hidden;
+  color: #82918b;
+  font-size: 8.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .editor-surface {
   position: relative;
   min-height: 0;
